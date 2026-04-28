@@ -84,6 +84,19 @@ def create_token(data):
     data["exp"] = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
     return jwt.encode(data, SECRET, algorithm="HS256")
 
+def verify_token(authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(401, "No token")
+    
+    token = authorization.split(" ")[1]
+
+    try:
+        payload=jwt.decode(token, SECRET, algorithms=["HS256"])
+        return payload
+    
+    except:
+        raise HTTPException(401, "Invalid token")
+
 @app.post("/login")
 def login(user: User):
     cursor = conn.cursor()
@@ -103,18 +116,6 @@ def login(user: User):
         return {"token": token}
     
     return {"error": "invalid credentials"}
-
-def verify_token(authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(401, "No token")
-    
-    token = authorization.split(" ")[1]
-
-    try:
-        jwt.decode(token, SECRET, algorithms=["HS256"])
-    
-    except:
-        raise HTTPException(401, "Invalid token")
     
 @app.post("/upload")
 async def upload(file: UploadFile = File(...), user=Depends(verify_token)):
