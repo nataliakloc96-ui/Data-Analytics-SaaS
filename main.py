@@ -60,6 +60,15 @@ class User(BaseModel):
 
 
 # ---------------- AUTH ENDPOINTS ----------------
+
+@app.get("/")
+def home():
+    return {
+        "status": "API running",
+        "docs": "/docs",
+        "endpoints": ["/login", "/upload", "/stats"]
+    }
+
 @app.post("/register")
 def register(user: User):
     conn = get_conn()
