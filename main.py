@@ -20,6 +20,24 @@ app.add_middleware(
 
 SECRET = "secret123"
 
+# ---------------- AUTH ----------------
+def verify_token(authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(401, "No token")
+
+    token = authorization.split(" ")[1]
+
+    try:
+        return jwt.decode(token, SECRET, algorithms=["HS256"])
+    except:
+        raise HTTPException(401, "Invalid token")
+
+
+def create_token(data):
+    data["exp"] = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+    return jwt.encode(data, SECRET, algorithm="HS256")
+
+
 # ---------------- DB ----------------
 def get_conn():
     return psycopg2.connect(
@@ -36,21 +54,10 @@ class User(BaseModel):
     name: str
     password: str
 
-# ---------------- AUTH ----------------
-def create_token(data):
-    data["exp"] = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
-    return jwt.encode(data, SECRET, algorithm="HS256")
 
-def verify_token(authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(401, "No token")
 
-    token = authorization.split(" ")[1]
 
-    try:
-        return jwt.decode(token, SECRET, algorithms=["HS256"])
-    except:
-        raise HTTPException(401, "Invalid token")
+
 
 # ---------------- AUTH ENDPOINTS ----------------
 @app.post("/register")
