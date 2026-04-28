@@ -52,7 +52,7 @@ async def upload(file: UploadFile = File(...), user=Depends(verify_token)):
 
 @app.get("/stats")
 def get_stats(user=Depends(verify_token)):
-    cursor = conn.cursor()
+    cursor = get_conn().cursor()
 
     cursor.execute(
         "SELECT data FROM uploaded_data WHERE user_id = %s",
