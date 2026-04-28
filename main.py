@@ -9,6 +9,8 @@ import bcrypt
 import datetime
 import os 
 
+print("DB_HOST:", os.getenv("DB_HOST"))
+print("DB_NAME:", os.getenv("DB_NAME"))
 
 app = FastAPI()
 
