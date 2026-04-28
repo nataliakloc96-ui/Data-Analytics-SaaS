@@ -25,11 +25,11 @@ class User(BaseModel):
     password: str
 
 conn = psycopg2.connect(
-    dbname=os.environ["DB_NAME"],
-    user=os.environ["DB_USER"],
-    password=os.environ["DB_PASS"],
-    host=os.environ["DB_HOST"],
-    port=os.environ["DB_PORT"]
+    dbname=os.getenv["DB_NAME"],
+    user=os.getenv["DB_USER"],
+    password=os.getenv["DB_PASS"],
+    host=os.getenv["DB_HOST"],
+    port=os.getenv["DB_PORT"]
 )
 
 
