@@ -1,16 +1,12 @@
-from fastapi import FastAPI, UploadFile, File, Depends
+from fastapi import FastAPI, UploadFile, File, Depends, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from jose import jwt 
-from fastapi import Header, HTTPException
+from jose import jwt
 import pandas as pd
 import psycopg2
 import bcrypt
 import datetime
-import os 
-
-print("DB_HOST:", os.getenv("DB_HOST"))
-print("DB_NAME:", os.getenv("DB_NAME"))
+import os
 
 app = FastAPI()
 
@@ -22,53 +18,44 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+SECRET = "secret123"
+
+# ---------------- DB ----------------
+def get_conn():
+    return psycopg2.connect(
+        dbname=os.getenv("DB_NAME"),
+        user=os.getenv("DB_USER"),
+        password=os.getenv("DB_PASS"),
+        host=os.getenv("DB_HOST"),
+        port=os.getenv("DB_PORT"),
+        sslmode="require"
+    )
+
+# ---------------- MODELS ----------------
 class User(BaseModel):
     name: str
     password: str
 
-conn = psycopg2.connect(
-    dbname=os.getenv("DB_NAME"),
-    user=os.getenv("DB_USER"),
-    password=os.getenv("DB_PASS"),
-    host=os.getenv("DB_HOST"),
-    port=os.getenv("DB_PORT"),
-    sslmode="require"
-)
+# ---------------- AUTH ----------------
+def create_token(data):
+    data["exp"] = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
+    return jwt.encode(data, SECRET, algorithm="HS256")
 
+def verify_token(authorization: str = Header(None)):
+    if not authorization:
+        raise HTTPException(401, "No token")
 
+    token = authorization.split(" ")[1]
 
-@app.post("/upload")
-async def upload(file: UploadFile = File(...), user=Depends(verify_token)):
-    df = pd.read_csv(file.file)
+    try:
+        return jwt.decode(token, SECRET, algorithms=["HS256"])
+    except:
+        raise HTTPException(401, "Invalid token")
 
-    cursor = conn.cursor()
-
-    for _, row in df.iterrows():
-        cursor.execute(
-            "INSERT INTO uploaded_data (data, user_id) VALUES (%s, %s)",
-            (row.to_json(), user["sub"])
-        )
-    conn.commit()
-
-    return {"status": "saved"
-    }
-
-@app.get("/stats")
-def get_stats(user=Depends(verify_token)):
-    cursor = get_conn().cursor()
-
-    cursor.execute(
-        "SELECT data FROM uploaded_data WHERE user_id = %s",
-        (user["sub"],)
-        
-        )
-    rows = cursor.fetchall()
-
-    return {"rows": len(rows)}
-
-    
+# ---------------- AUTH ENDPOINTS ----------------
 @app.post("/register")
 def register(user: User):
+    conn = get_conn()
     cursor = conn.cursor()
 
     hashed = bcrypt.hashpw(user.password.encode(), bcrypt.gensalt())
@@ -77,31 +64,15 @@ def register(user: User):
         "INSERT INTO users (name, password) VALUES (%s, %s)",
         (user.name, hashed)
     )
+
     conn.commit()
+    conn.close()
 
     return {"message": "user created"}
 
-SECRET = "secret123"
-
-def create_token(data):
-    data["exp"] = datetime.datetime.utcnow() + datetime.timedelta(hours=2)
-    return jwt.encode(data, SECRET, algorithm="HS256")
-
-def verify_token(authorization: str = Header(None)):
-    if not authorization:
-        raise HTTPException(401, "No token")
-    
-    token = authorization.split(" ")[1]
-
-    try:
-        payload=jwt.decode(token, SECRET, algorithms=["HS256"])
-        return payload
-    
-    except:
-        raise HTTPException(401, "Invalid token")
-
 @app.post("/login")
 def login(user: User):
+    conn = get_conn()
     cursor = conn.cursor()
 
     cursor.execute(
@@ -110,20 +81,23 @@ def login(user: User):
     )
 
     result = cursor.fetchone()
+    conn.close()
 
     if not result:
         return {"error": "invalid credentials"}
-    
-    if bcrypt.checkpw(user.password.encode(), result[0].tobytes()):
+
+    if bcrypt.checkpw(user.password.encode(), result[0]):
         token = create_token({"sub": user.name})
         return {"token": token}
-    
+
     return {"error": "invalid credentials"}
-    
+
+# ---------------- UPLOAD ----------------
 @app.post("/upload")
 async def upload(file: UploadFile = File(...), user=Depends(verify_token)):
     df = pd.read_csv(file.file)
 
+    conn = get_conn()
     cursor = conn.cursor()
 
     for _, row in df.iterrows():
@@ -131,20 +105,24 @@ async def upload(file: UploadFile = File(...), user=Depends(verify_token)):
             "INSERT INTO uploaded_data (data, user_id) VALUES (%s, %s)",
             (row.to_json(), user["sub"])
         )
-    
+
     conn.commit()
+    conn.close()
 
     return {"status": "saved"}
 
+# ---------------- STATS ----------------
 @app.get("/stats")
 def stats(user=Depends(verify_token)):
+    conn = get_conn()
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT data FROM users WHERE user_id = %s",
+        "SELECT data FROM uploaded_data WHERE user_id = %s",
         (user["sub"],)
     )
 
     rows = cursor.fetchall()
+    conn.close()
 
     return {"rows": len(rows)}
