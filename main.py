@@ -128,7 +128,7 @@ async def upload(file: UploadFile = File(...), user=Depends(verify_token)):
     return {"status": "saved"}
 
 # ---------------- STATS ----------------
-@app.get("/stats")
+@app.get("/me/stats")
 def stats(user=Depends(verify_token)):
     conn = get_conn()
     cursor = conn.cursor()
