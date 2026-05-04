@@ -128,17 +128,27 @@ async def upload(file: UploadFile = File(...), user=Depends(verify_token)):
     return {"status": "saved"}
 
 # ---------------- STATS ----------------
-@app.get("/me/stats")
+
+@app.get("/me")
+def me(user=Depends(verify_token)):
+    return {"user": user["sub"]}
+
+
+@app.get("/stats")
 def stats(user=Depends(verify_token)):
     conn = get_conn()
     cursor = conn.cursor()
 
     cursor.execute(
-        "SELECT data FROM uploaded_data WHERE user_id = %s",
+        "SELECT COUNT(*) FROM uploaded_data WHERE user_id = %s",
         (user["sub"],)
     )
 
-    rows = cursor.fetchall()
+    count = cursor.fetchall()[0]
+    
     conn.close()
-
-    return {"rows": len(rows)}
+    
+    return {
+        "rows": count,
+        "user": user["sub"]
+    }
