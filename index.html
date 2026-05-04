@@ -34,6 +34,8 @@
 </div>
 
 <div id="kpis"></div>div>
+
+<h3>👤 User: <span id="user"></span></h3>
   
 <script>
 
@@ -76,6 +78,15 @@ async function upload() {
   alert("Uploaded!");
 }
 
+async function loadUser() {
+  const res = await fetch(API + "/me", {
+    headers: authHeaders()
+  });
+  const data = await res.json();
+
+  document.getElementById("user").innerText = data.user;
+}
+
 async function loadStats() {
   const res = await fetch(API + "/stats", {
     headers: authHeaders()
@@ -100,8 +111,11 @@ async function loadStats() {
 }
 
 if (token) { 
+  loadUser();
+  loadStats();
   console.log("User already logged in");
-
+}
+  
 function logout() {
   localStorage.removeItem("token");
   token = "";
