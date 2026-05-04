@@ -19,6 +19,7 @@
   <input id="loginName" placeholder="name">
   <input id="loginPass" type="password" placeholder="password">
   <button onclick="login()">Login</button>
+  <button onclick="logout()">Logout</button>
 </div>
 
 <div class="box">
@@ -68,7 +69,10 @@ async function login() {
 }
 
   function authHeaders() {
-    if (!token) return {};
+    if (!token) {
+      alert("Zaloguj się najpierw");
+      return;
+    }
   return {
     "Authorization": "Bearer " + token
   };
@@ -124,9 +128,10 @@ let chart;
 async function loadStats() {
     if (!token) return;
 
-  const res = await fetch(API + "/stats", {
-    headers: authHeaders()
-  });
+    try {
+      const res = await fetch(API + "/stats", {
+        headers: authHeaders()
+      });
 
   if (!res.ok) {
     alert("Failed to load stats");
@@ -134,7 +139,8 @@ async function loadStats() {
   }
 
   const data = await res.json();
-
+  console.log(data);
+  
   renderKPIs(data.rows);
 
   if (chart) chart.destroy();
@@ -149,6 +155,9 @@ async function loadStats() {
       }]
     }
   });
+} catch(err) {
+  console.error("Błąd:", err);
+}
 }
 
 if (token) { 
