@@ -101,8 +101,10 @@ def login(user: User):
 
     if not result:
         return {"error": "invalid credentials"}
+    
+    stored_password = bytes(result[0])
 
-    if bcrypt.checkpw(user.password.encode(), result[0]):
+    if bcrypt.checkpw(user.password.encode(), stored_password):
         token = create_token({"sub": user.name})
         return {"token": token}
 
