@@ -33,7 +33,7 @@
   <canvas id="chart"></canvas>
 </div>
 
-<div id="kpis"></div>div>
+<div id="kpis"></div>
 
 <h3>👤 User: <span id="user"></span></h3>
   
@@ -52,13 +52,23 @@ async function login() {
     body: JSON.stringify({name, password})
   });
 
+  if (!res.ok) {
+    alert("Login failed");
+    return;
+  }
+
   const data = await res.json();
   token = data.token;
+  localStorage.setItem("token", token);
 
   alert("Logged in!");
+
+  loadUser();
+  loadStats();
 }
 
   function authHeaders() {
+    if (!token) return {};
   return {
     "Authorization": "Bearer " + token
   };
@@ -66,39 +76,70 @@ async function login() {
   
 async function upload() {
   const file = document.getElementById("file").files[0];
+  if (!file) {
+    alert("Select file first");
+    return;
+  }
+  
   const form = new FormData();
   form.append("file", file);
 
-  await fetch(API + "/upload", {
+  const res = await fetch(API + "/upload", {
     method: "POST",
     headers: authHeaders(),
     body: form
   });
 
+    if(!res.ok) {
+    alert("Upload failed");
+    return;
+  }
+
   alert("Uploaded!");
+
+  loadStats();   
+
 }
 
 async function loadUser() {
+  if (!token) return;
+
   const res = await fetch(API + "/me", {
     headers: authHeaders()
   });
+
+  if (!res.ok){
+    alert("Failed to load user");
+    return;
+  }
+
   const data = await res.json();
 
   document.getElementById("user").innerText = data.user;
+
 }
 
+let chart;
+
 async function loadStats() {
+    if (!token) return;
+
   const res = await fetch(API + "/stats", {
     headers: authHeaders()
   });
 
+  if (!res.ok) {
+    alert("Failed to load stats");
+    return;
+  }
+
   const data = await res.json();
-  token = data.token;
 
-  localStorage.setItem("token", token);
-  alert("Logged in!");
+  renderKPIs(data.rows);
 
-  new Chart(document.getElementById("chart"), {
+  if (chart) chart.destroy();
+
+  chart = new Chart(document.getElementById("chart"), {
     type: "bar",
     data: {
       labels: ["rows"],
@@ -111,10 +152,13 @@ async function loadStats() {
 }
 
 if (token) { 
+  console.log("User already logged in");
+
   loadUser();
   loadStats();
-  console.log("User already logged in");
 }
+
+
   
 function logout() {
   localStorage.removeItem("token");
@@ -124,8 +168,7 @@ function logout() {
 
 function renderKPIs(rows) {
   document.getElementById("kpis").innerHTML =
-    <h3> Total rows: ${rows}</h3>
-  ;
+    `<h3>Total rows: ${rows}</h3>` ;
 }
   
 </script>
