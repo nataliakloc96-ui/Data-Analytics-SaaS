@@ -21,6 +21,33 @@ app.add_middleware(
 SECRET = "secret123"
 
 # ---------------- AUTH ----------------
+def init_db():
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+                   id SERIAL PRIMARY KEY,
+                   name TEXT UNIQUE,
+                   password BYTEA
+                   )
+
+
+""")
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS uploaded_data (
+                   id SERIAL PRIMARY KEY,
+                   data TEXT,
+                   user_id TEXT
+                   )
+""")
+    
+    conn.commit()
+    conn.close()
+
+init_db()
+
 def verify_token(authorization: str = Header(None)):
     if not authorization:
         raise HTTPException(401, "No token")
