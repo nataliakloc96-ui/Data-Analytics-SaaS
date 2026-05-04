@@ -21,32 +21,7 @@ app.add_middleware(
 SECRET = "secret123"
 
 # ---------------- AUTH ----------------
-def init_db():
-    conn = get_conn()
-    cursor = conn.cursor()
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS users (
-                   id SERIAL PRIMARY KEY,
-                   name TEXT UNIQUE,
-                   password BYTEA
-                   )
-
-
-""")
-    
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS uploaded_data (
-                   id SERIAL PRIMARY KEY,
-                   data TEXT,
-                   user_id TEXT
-                   )
-""")
-    
-    conn.commit()
-    conn.close()
-
-init_db()
 
 def verify_token(authorization: str = Header(None)):
     if not authorization:
@@ -75,6 +50,7 @@ def get_conn():
         port=os.getenv("DB_PORT"),
         sslmode="require"
     )
+
 
 # ---------------- MODELS ----------------
 class User(BaseModel):
@@ -138,6 +114,34 @@ def login(user: User):
     return {"error": "invalid credentials"}
 
 # ---------------- UPLOAD ----------------
+@app.on_event("startup")
+def init_db():
+    conn = get_conn()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+                   id SERIAL PRIMARY KEY,
+                   name TEXT UNIQUE,
+                   password BYTEA
+                   )
+
+
+""")
+    
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS uploaded_data (
+                   id SERIAL PRIMARY KEY,
+                   data TEXT,
+                   user_id TEXT
+                   )
+""")
+    
+    conn.commit()
+    conn.close()
+
+
+
 @app.post("/upload")
 async def upload(file: UploadFile = File(...), user=Depends(verify_token)):
     df = pd.read_csv(file.file)
